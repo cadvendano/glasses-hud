@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="robots" content="noindex, nofollow">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Glucose HUD">
+<meta name="theme-color" content="#fcfcfb" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#1a1a19" media="(prefers-color-scheme: dark)">
+<title>Glucose HUD</title>
+<style>
+  .viz-root {
+    color-scheme: light;
+    --surface-0: #f3f2ee;
+    --surface-1: #fcfcfb;
+    --text-primary: #0b0b0b;
+    --text-secondary: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --axis: #c3c2b7;
+    --border: rgba(11,11,11,0.10);
+    --series-1: #2a78d6;
+    --band: rgba(12,163,12,0.10);
+    --good: #0ca30c;
+    --good-text: #006300;
+    --warning: #fab219;
+    --critical: #d03b3b;
+  }
+  @media (prefers-color-scheme: dark) {
+    .viz-root {
+      color-scheme: dark;
+      --surface-0: #111110;
+      --surface-1: #1a1a19;
+      --text-primary: #f0efec;
+      --text-secondary: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --axis: #383835;
+      --border: rgba(255,255,255,0.10);
+      --series-1: #3987e5;
+      --band: rgba(12,163,12,0.16);
+      --good-text: #0ca30c;
+    }
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    background: var(--surface-0);
+    color: var(--text-primary);
+    -webkit-text-size-adjust: 100%;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px 32px; }
+  header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0; }
+  .status-line { font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: none; }
+  .dot.stale { background: var(--warning); }
+  .dot.error { background: var(--critical); }
+  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
+  .card h2 { font-size: 14px; font-weight: 600; margin: 0 0 4px; }
+  .card .sub { font-size: 12px; color: var(--text-secondary); margin: 0 0 12px; }
+  .tiles { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
+  .tiles .card { margin: 0; }
+  .label { font-size: 13px; color: var(--text-secondary); }
+  .hero { font-size: 56px; font-weight: 600; line-height: 1.05; margin-top: 4px; display: flex; align-items: baseline; gap: 10px; }
+  .hero .arrow { font-size: 40px; }
+  .hero .unit { font-size: 15px; font-weight: 500; color: var(--text-secondary); }
+  .value { font-size: 32px; font-weight: 600; margin-top: 4px; }
+  .value .unit { font-size: 14px; font-weight: 500; color: var(--text-secondary); }
+  .meta { font-size: 13px; color: var(--text-secondary); margin-top: 6px; }
+  .split { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  .chart-box { position: relative; }
+  svg { display: block; width: 100%; height: 260px; touch-action: pan-y; }
+  .tooltip {
+    position: absolute; pointer-events: none; background: var(--surface-1); color: var(--text-primary);
+    border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 13px;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12); white-space: nowrap; display: none; transform: translateX(-50%);
+  }
+  .tooltip b { font-weight: 600; }
+  .tooltip span { color: var(--text-secondary); }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary); margin-top: 8px; flex-wrap: wrap; }
+  .legend i { display: inline-block; vertical-align: middle; margin-right: 6px; }
+  .legend .line { width: 16px; height: 2px; background: var(--series-1); border-radius: 1px; }
+  .legend .band { width: 14px; height: 10px; background: var(--band); border: 1px dashed var(--good); border-radius: 2px; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .cols .card { margin: 0; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th { text-align: left; font-weight: 500; font-size: 12px; color: var(--text-secondary); padding: 6px 4px; border-bottom: 1px solid var(--grid); }
+  td { padding: 7px 4px; border-bottom: 1px solid var(--grid); }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  tr:last-child td { border-bottom: none; }
+  .trend-cell { color: var(--text-secondary); }
+  .trend-cell b { color: var(--text-primary); font-weight: 600; margin-right: 6px; }
+  .banner { display: none; border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-bottom: 12px; border: 1px solid var(--border); background: var(--surface-1); }
+  .banner.show { display: block; }
+  .banner .icon { font-weight: 700; margin-right: 6px; }
+  .banner.warn .icon { color: var(--warning); }
+  .banner.err .icon { color: var(--critical); }
+  form.setup { max-width: 460px; }
+  form.setup label { display: block; font-size: 13px; font-weight: 500; margin: 12px 0 6px; }
+  form.setup input {
+    width: 100%; font-size: 16px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--axis);
+    background: var(--surface-0); color: var(--text-primary);
+  }
+  button {
+    font: inherit; font-size: 14px; font-weight: 500; padding: 9px 14px; border-radius: 8px; cursor: pointer;
+    border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary);
+  }
+  button.primary { background: var(--series-1); border-color: var(--series-1); color: #fff; margin-top: 16px; }
+  .link-btn { border: none; background: none; padding: 0; color: var(--text-secondary); text-decoration: underline; font-size: 12px; }
+  footer { font-size: 12px; color: var(--muted); margin-top: 16px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  .hidden { display: none !important; }
+  @media (max-width: 640px) {
+    .tiles { grid-template-columns: 1fr 1fr; }
+    .tiles .now { grid-column: 1 / -1; }
+    .cols { grid-template-columns: 1fr; }
+    .hero { font-size: 64px; }
+    svg { height: 220px; }
+  }
+</style>
+</head>
+<body class="viz-root">
+<div class="wrap">
+  <header>
+    <h1>Glucose HUD</h1>
+    <div class="status-line" id="statusLine"><span class="dot" id="statusDot"></span><span id="statusText">Starting…</span></div>
+  </header>
+
+  <!-- Setup: shown until a token is saved on this device -->
+  <section class="card hidden" id="setup">
+    <h2>Connect this device</h2>
+    <p class="sub">Type your read-only <b>glasses</b> token. It is saved only in this browser on this device and is sent only to your Nightscout server.</p>
+    <form class="setup" id="setupForm" autocomplete="off">
+      <label for="tokenInput">Glasses token</label>
+      <input id="tokenInput" type="password" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="glasses-…" required>
+      <label for="urlInput">Nightscout address</label>
+      <input id="urlInput" type="url" autocomplete="off" autocapitalize="off" spellcheck="false">
+      <div id="setupError" class="split" style="color: var(--critical);"></div>
+      <button class="primary" type="submit">Connect</button>
+    </form>
+  </section>
+
+  <main id="dash" class="hidden">
+    <div class="banner warn" id="staleBanner"><span class="icon">⚠</span><span id="staleText"></span></div>
+    <div class="banner err" id="errBanner"><span class="icon">✕</span><span id="errText"></span></div>
+
+    <div class="tiles">
+      <div class="card now">
+        <div class="label">Now</div>
+        <div class="hero"><span id="nowValue">–</span><span class="arrow" id="nowArrow"></span><span class="unit">mg/dL</span></div>
+        <div class="meta" id="nowMeta">–</div>
+      </div>
+      <div class="card">
+        <div class="label">Today's average</div>
+        <div class="value"><span id="avgValue">–</span> <span class="unit">mg/dL</span></div>
+        <div class="split" id="avgMeta"></div>
+      </div>
+      <div class="card">
+        <div class="label">Today in range (70–180)</div>
+        <div class="value"><span id="tirValue">–</span><span class="unit">%</span></div>
+        <div class="split" id="tirMeta"></div>
+      </div>
+    </div>
+
+    <section class="card">
+      <h2>Last 24 hours</h2>
+      <p class="sub" id="chartSub">Eastern time · shaded band is 70–180 mg/dL</p>
+      <div class="chart-box" id="chartBox">
+        <svg id="chart" role="img" aria-label="Glucose over the last 24 hours"></svg>
+        <div class="tooltip" id="tooltip"></div>
+      </div>
+      <div class="legend"><span><i class="line"></i>Glucose</span><span><i class="band"></i>Range 70–180</span></div>
+    </section>
+
+    <div class="cols">
+      <section class="card">
+        <h2>Recent readings</h2>
+        <p class="sub">Newest first · Eastern time</p>
+        <table>
+          <thead><tr><th>Time</th><th class="num">mg/dL</th><th>Trend</th></tr></thead>
+          <tbody id="recentBody"></tbody>
+        </table>
+      </section>
+      <section class="card">
+        <h2>Daily summary</h2>
+        <p class="sub">Last 7 days · Eastern calendar days</p>
+        <table>
+          <thead><tr><th>Day</th><th class="num">Average</th><th class="num">In range</th><th class="num">Readings</th></tr></thead>
+          <tbody id="dailyBody"></tbody>
+        </table>
+      </section>
+    </div>
+
+    <footer>
+      <span>Personal fitness dashboard, not a medical device.</span>
+      <span><button class="link-btn" id="forgetBtn" type="button">Forget token on this device</button></span>
+    </footer>
+  </main>
+</div>
+
+<script src="glucose-data.js"></script>
+<script>
+(function () {
+  "use strict";
+  var GD = window.GlucoseData;
+  var DEFAULT_URL = "https://cadhud.chickenkiller.com";
+  var KEY_TOKEN = "hud.token", KEY_URL = "hud.url";
+  var POLL_MS = 30000;              // check for a new reading every 30 s
+  var DAILY_REFRESH_MS = 30 * 60000;
+  var STALE_MIN = 15;
+  var RANGE = { low: 70, high: 180 };
+
+  var $ = function (id) { return document.getElementById(id); };
+  var source = null, latestTime = 0, last24 = [], lastDailyFetch = 0, pollTimer = null, lastCheck = 0;
+
+  function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
+  function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
+
+  /* ---------- Setup ---------- */
+  function showSetup(msg) {
+    stopPolling();
+    $("dash").classList.add("hidden");
+    $("setup").classList.remove("hidden");
+    $("urlInput").value = load(KEY_URL) || DEFAULT_URL;
+    $("tokenInput").value = "";
+    $("setupError").textContent = msg || "";
+    setStatus("error", "Not connected");
+  }
+
+  $("setupForm").addEventListener("submit", function (ev) {
+    ev.preventDefault();
+    var token = $("tokenInput").value.trim();
+    var url = ($("urlInput").value.trim() || DEFAULT_URL).replace(/\/+$/, "");
+    if (!token) return;
+    $("setupError").textContent = "Checking…";
+    var test = GD.createNightscoutSource({ baseUrl: url, token: token });
+    test.latest().then(function () {
+      store(KEY_TOKEN, token);
+      store(KEY_URL, url);
+      $("tokenInput").value = "";
+      start();
+    }).catch(function (e) {
+      $("setupError").textContent = e instanceof GD.AuthError
+        ? "That token wasn't accepted. Check it and try again."
+        : "Couldn't reach Nightscout (" + e.message + "). Check the address and your connection.";
+    });
+  });
+
+  $("forgetBtn").addEventListener("click", function () {
+    if (!window.confirm || window.confirm("Remove the token from this device?")) {
+      store(KEY_TOKEN, null);
+      showSetup("Token removed from this device.");
+    }
+  });
+
+  /* ---------- Data flow ---------- */
+  function start() {
+    var token = load(KEY_TOKEN);
+    if (!token) { showSetup(); return; }
+    source = GD.createNightscoutSource({ baseUrl: load(KEY_URL) || DEFAULT_URL, token: token });
+    $("setup").classList.add("hidden");
+    $("dash").classList.remove("hidden");
+    latestTime = 0; lastDailyFetch = 0;
+    refreshAll();
+    startPolling();
+  }
+
+  function startPolling() { stopPolling(); pollTimer = setInterval(poll, POLL_MS); }
+  function stopPolling() { if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
+
+  function poll() {
+    if (!source) return;
+    source.latest().then(function (r) {
+      lastCheck = Date.now();
+      hideError();
+      if (r && r.time > latestTime) return refreshAll();
+      renderStatus();
+    }).catch(handleError);
+  }
+
+  function refreshAll() {
+    var now = Date.now();
+    var from = Math.min(now - 24 * 3600000, GD.startOfDayET(now));
+    var jobs = [source.since(from, 600)];
+    var needDaily = now - lastDailyFetch > DAILY_REFRESH_MS;
+    if (needDaily) jobs.push(source.since(GD.startOfDayET(now - 6 * 86400000), 2400));
+    return Promise.all(jobs).then(function (res) {
+      lastCheck = Date.now();
+      hideError();
+      last24 = res[0];
+      if (last24.length) latestTime = last24[last24.length - 1].time;
+      if (needDaily) { lastDailyFetch = now; renderDaily(res[1]); }
+      else renderTodayRow();
+      renderAll();
+    }).catch(handleError);
+  }
+
+  function handleError(e) {
+    if (e instanceof GD.AuthError) { store(KEY_TOKEN, null); showSetup("The saved token stopped working. Please type it again."); return; }
+    $("errText").textContent = "Can't reach Nightscout right now (" + (e && e.message || "network error") + "). Retrying every 30 seconds.";
+    $("errBanner").classList.add("show");
+    setStatus("error", "Connection problem");
+  }
+  function hideError() { $("errBanner").classList.remove("show"); }
+
+  /* ---------- Rendering ---------- */
+  var dailyRows = [];
+
+  function renderAll() {
+    renderNow();
+    renderToday();
+    renderChart();
+    renderRecent();
+    renderStatus();
+  }
+
+  function minutesAgo(ms) { return Math.max(0, Math.round((Date.now() - ms) / 60000)); }
+  function agoText(ms) { var m = minutesAgo(ms); return m === 0 ? "just now" : m === 1 ? "1 min ago" : m + " min ago"; }
+
+  function renderNow() {
+    var r = last24[last24.length - 1];
+    if (!r) { $("nowValue").textContent = "–"; $("nowArrow").textContent = ""; $("nowMeta").textContent = "No readings in the last 24 hours"; return; }
+    var prev = last24.length > 1 ? last24[last24.length - 2] : null;
+    var delta = prev && r.time - prev.time < 15 * 60000 ? r.mgdl - prev.mgdl : null;
+    $("nowValue").textContent = r.mgdl;
+    $("nowArrow").textContent = r.arrow;
+    $("nowArrow").setAttribute("aria-label", r.trend);
+    $("nowMeta").textContent = GD.formatTimeET(r.time) + " · " + agoText(r.time) + " · " + r.trend +
+      (delta !== null ? " · " + (delta > 0 ? "+" : delta < 0 ? "−" : "±") + Math.abs(delta) + " since last" : "");
+    document.title = r.mgdl + " " + r.arrow + " · Glucose HUD";
+  }
+
+  function renderToday() {
+    var start = GD.startOfDayET(Date.now());
+    var s = GD.stats(last24.filter(function (r) { return r.time >= start; }), RANGE);
+    $("avgValue").textContent = s.avg == null ? "–" : s.avg;
+    $("avgMeta").textContent = s.count ? "Low " + s.min + " · High " + s.max + " · " + s.count + " readings" : "No readings yet today";
+    $("tirValue").textContent = s.tirPct == null ? "–" : s.tirPct;
+    $("tirMeta").textContent = s.count ? "Below " + s.belowPct + "% · Above " + s.abovePct + "%" : "";
+  }
+
+  function renderDaily(rows) {
+    dailyRows = GD.dailySummaries(rows, RANGE).slice(0, 7);
+    drawDaily();
+  }
+  function renderTodayRow() {
+    // keep today's row current between the half-hourly full refreshes
+    var start = GD.startOfDayET(Date.now());
+    var s = GD.stats(last24.filter(function (r) { return r.time >= start; }), RANGE);
+    s.dayStart = start; s.label = GD.formatDayET(start);
+    if (dailyRows.length && dailyRows[0].dayStart === start) dailyRows[0] = s;
+    else if (s.count) dailyRows.unshift(s);
+    dailyRows = dailyRows.slice(0, 7);
+    drawDaily();
+  }
+  function drawDaily() {
+    var today = GD.startOfDayET(Date.now());
+    $("dailyBody").innerHTML = dailyRows.map(function (d) {
+      return "<tr><td>" + (d.dayStart === today ? "Today" : d.label) + "</td><td class='num'>" + d.avg +
+        "</td><td class='num'>" + d.tirPct + "%</td><td class='num'>" + d.count + "</td></tr>";
+    }).join("") || "<tr><td colspan='4'>No data yet</td></tr>";
+  }
+
+  function renderRecent() {
+    var rows = last24.slice(-12).reverse();
+    $("recentBody").innerHTML = rows.map(function (r) {
+      return "<tr><td>" + GD.formatTimeET(r.time) + "</td><td class='num'>" + r.mgdl +
+        "</td><td class='trend-cell'><b>" + r.arrow + "</b>" + r.trend + "</td></tr>";
+    }).join("") || "<tr><td colspan='3'>No readings yet</td></tr>";
+  }
+
+  function setStatus(kind, text) {
+    $("statusDot").className = "dot" + (kind === "ok" ? "" : " " + kind);
+    $("statusText").textContent = text;
+  }
+
+  function renderStatus() {
+    var r = last24[last24.length - 1];
+    if (!r) { setStatus("stale", "Waiting for readings"); return; }
+    var m = minutesAgo(r.time);
+    if (m >= STALE_MIN) {
+      $("staleText").textContent = "No new reading for " + m + " minutes. Check that Zukka and the Stelo app are running on your iPhone.";
+      $("staleBanner").classList.add("show");
+      setStatus("stale", "Last reading " + agoText(r.time));
+    } else {
+      $("staleBanner").classList.remove("show");
+      setStatus("ok", "Live · last reading " + agoText(r.time));
+    }
+  }
+
+  /* ---------- Chart (hand-built SVG) ---------- */
+  var chartState = null;
+
+  function renderChart() {
+    var svg = $("chart");
+    var W = svg.clientWidth || 600, H = svg.clientHeight || 240;
+    var m = { l: 36, r: 12, t: 10, b: 24 };
+    var now = Date.now(), x0 = now - 24 * 3600000, x1 = now;
+    var data = last24.filter(function (r) { return r.time >= x0; });
+    var lo = 40, hi = 300;
+    data.forEach(function (r) { if (r.mgdl < lo) lo = Math.floor(r.mgdl / 20) * 20; if (r.mgdl > hi) hi = Math.ceil(r.mgdl / 20) * 20; });
+    var sx = function (t) { return m.l + (t - x0) / (x1 - x0) * (W - m.l - m.r); };
+    var sy = function (v) { return m.t + (1 - (v - lo) / (hi - lo)) * (H - m.t - m.b); };
+    var out = [];
+    var NS = 'xmlns="http://www.w3.org/2000/svg"';
+    svg.setAttribute("viewBox", "0 0 " + W + " " + H);
+
+    // target band
+    out.push('<rect x="' + m.l + '" y="' + sy(RANGE.high) + '" width="' + (W - m.l - m.r) + '" height="' + (sy(RANGE.low) - sy(RANGE.high)) + '" fill="var(--band)"/>');
+    // y grid + labels
+    [lo, RANGE.low, RANGE.high, 250, hi].filter(function (v, i, a) { return v >= lo && v <= hi && a.indexOf(v) === i; }).forEach(function (v) {
+      var y = sy(v);
+      var isRange = v === RANGE.low || v === RANGE.high;
+      out.push('<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + y + '" y2="' + y + '" stroke="' + (isRange ? "var(--good)" : "var(--grid)") + '" stroke-width="1"' + (isRange ? ' stroke-dasharray="4 4" opacity="0.7"' : "") + '/>');
+      out.push('<text x="' + (m.l - 6) + '" y="' + (y + 4) + '" text-anchor="end" font-size="11" fill="var(--muted)">' + v + '</text>');
+    });
+    // x ticks every 3 hours (Eastern)
+    var hourMs = 3600000, first = Math.ceil(x0 / hourMs) * hourMs;
+    for (var t = first; t <= x1; t += hourMs) {
+      var hr = Number(new Intl.DateTimeFormat("en-US", { timeZone: GD.TIME_ZONE, hour: "numeric", hourCycle: "h23" }).format(new Date(t)));
+      if (hr % (W < 500 ? 6 : 3) !== 0) continue;
+      var x = sx(t);
+      var lbl = new Intl.DateTimeFormat("en-US", { timeZone: GD.TIME_ZONE, hour: "numeric" }).format(new Date(t)).replace(" ", "");
+      if (x < m.l + 14 || x > W - m.r - 14) continue;
+      out.push('<line x1="' + x + '" x2="' + x + '" y1="' + (H - m.b) + '" y2="' + (H - m.b + 4) + '" stroke="var(--axis)"/>');
+      out.push('<text x="' + x + '" y="' + (H - 6) + '" text-anchor="middle" font-size="11" fill="var(--muted)">' + lbl + '</text>');
+    }
+    // baseline
+    out.push('<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + (H - m.b) + '" y2="' + (H - m.b) + '" stroke="var(--axis)"/>');
+    // line, broken at gaps > 15 min
+    var path = "", prev = null;
+    data.forEach(function (r) {
+      var cmd = (!prev || r.time - prev.time > 15 * 60000) ? "M" : "L";
+      path += cmd + sx(r.time).toFixed(1) + "," + sy(r.mgdl).toFixed(1);
+      prev = r;
+    });
+    if (path) out.push('<path d="' + path + '" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>');
+    // latest point marker
+    var last = data[data.length - 1];
+    if (last) out.push('<circle cx="' + sx(last.time) + '" cy="' + sy(last.mgdl) + '" r="4.5" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="2"/>');
+    // hover layer
+    out.push('<g id="hover" style="display:none"><line id="hLine" y1="' + m.t + '" y2="' + (H - m.b) + '" stroke="var(--axis)" stroke-width="1"/><circle id="hDot" r="5" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="2"/></g>');
+    out.push('<rect x="' + m.l + '" y="0" width="' + (W - m.l - m.r) + '" height="' + H + '" fill="transparent" id="hit"/>');
+    svg.innerHTML = out.join("");
+    chartState = { data: data, sx: sx, sy: sy, W: W };
+    $("chartSub").textContent = "Eastern time · shaded band is 70–180 mg/dL · " + data.length + " readings";
+  }
+
+  function onHover(ev) {
+    if (!chartState || !chartState.data.length) return;
+    var svg = $("chart"), rect = svg.getBoundingClientRect();
+    var px = (ev.clientX - rect.left) * (chartState.W / rect.width);
+    var best = null, bestD = Infinity;
+    chartState.data.forEach(function (r) { var d = Math.abs(chartState.sx(r.time) - px); if (d < bestD) { bestD = d; best = r; } });
+    if (!best || bestD > 30) { hideHover(); return; }
+    var x = chartState.sx(best.time), y = chartState.sy(best.mgdl);
+    var g = svg.querySelector("#hover"); g.style.display = "";
+    var hl = svg.querySelector("#hLine"); hl.setAttribute("x1", x); hl.setAttribute("x2", x);
+    var hd = svg.querySelector("#hDot"); hd.setAttribute("cx", x); hd.setAttribute("cy", y);
+    var tip = $("tooltip");
+    tip.innerHTML = "<b>" + best.mgdl + " mg/dL " + best.arrow + "</b> <span>" + GD.formatTimeET(best.time) + "</span>";
+    tip.style.display = "block";
+    var left = x * rect.width / chartState.W;
+    left = Math.max(70, Math.min(rect.width - 70, left));
+    tip.style.left = left + "px";
+    tip.style.top = Math.max(0, y * rect.height / svg.viewBox.baseVal.height - 44) + "px";
+  }
+  function hideHover() {
+    var g = $("chart").querySelector("#hover"); if (g) g.style.display = "none";
+    $("tooltip").style.display = "none";
+  }
+  $("chart").addEventListener("pointermove", onHover);
+  $("chart").addEventListener("pointerdown", onHover);
+  $("chart").addEventListener("pointerleave", hideHover);
+
+  /* ---------- Keep it fresh ---------- */
+  // Update "x min ago" text every 20 s without hitting the server
+  setInterval(function () { if (source && last24.length) { renderNow(); renderStatus(); } }, 20000);
+  // Phones pause pages in the background: refresh as soon as it's visible again
+  document.addEventListener("visibilitychange", function () {
+    if (document.visibilityState === "visible" && source) { poll(); if (Date.now() - lastCheck > 10 * 60000) refreshAll(); }
+  });
+  var resizeT; window.addEventListener("resize", function () { clearTimeout(resizeT); resizeT = setTimeout(function () { if (source) renderChart(); }, 150); });
+
+  start();
+})();
+</script>
+</body>
+</html>
