@@ -1,132 +1,163 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" data-theme="midnight">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="robots" content="noindex, nofollow">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Glucose HUD">
-<meta name="theme-color" content="#fcfcfb" media="(prefers-color-scheme: light)">
-<meta name="theme-color" content="#1a1a19" media="(prefers-color-scheme: dark)">
+<meta name="theme-color" content="#0a1222" id="themeColor">
 <title>Glucose HUD</title>
 <style>
-  .viz-root {
+  /* ---------- Themes (all blue) ---------- */
+  :root[data-theme="midnight"] {
+    color-scheme: dark;
+    --bg: #0a1222; --bg-glow: radial-gradient(1200px 600px at 20% -10%, #13274a 0%, transparent 60%);
+    --card: #0f1b30; --border: rgba(120,170,255,0.14);
+    --text: #e8f0ff; --text-2: #a9bddb; --muted: #6f86a8;
+    --grid: #1a2a45; --axis: #2a3d5e;
+    --line: #4da3ff; --line-glow: none; --high: #f5b942;
+    --band: rgba(77,163,255,0.13); --band-edge: #4da3ff;
+    --accent: #4da3ff; --accent-ink: #06101f;
+    --tab-bg: #0a1426; --tab-on: #1e4f9a; --tab-on-text: #ffffff;
+    --radius: 14px; --num-font: inherit; --label-case: none; --label-track: 0;
+  }
+  :root[data-theme="ice"] {
     color-scheme: light;
-    --surface-0: #f3f2ee;
-    --surface-1: #fcfcfb;
-    --text-primary: #0b0b0b;
-    --text-secondary: #52514e;
-    --muted: #898781;
-    --grid: #e1e0d9;
-    --axis: #c3c2b7;
-    --border: rgba(11,11,11,0.10);
-    --series-1: #2a78d6;
-    --band: rgba(12,163,12,0.10);
-    --good: #0ca30c;
-    --good-text: #006300;
-    --warning: #fab219;
-    --critical: #d03b3b;
+    --bg: #eaf1fa; --bg-glow: radial-gradient(1200px 600px at 20% -10%, #d6e6fb 0%, transparent 60%);
+    --card: #ffffff; --border: rgba(30,80,150,0.12);
+    --text: #0b1b33; --text-2: #3d5576; --muted: #7489a6;
+    --grid: #e1eaf5; --axis: #b8c8dd;
+    --line: #1f6fd1; --line-glow: none; --high: #b7791f;
+    --band: rgba(31,111,209,0.09); --band-edge: #1f6fd1;
+    --accent: #1f6fd1; --accent-ink: #ffffff;
+    --tab-bg: #e6eef9; --tab-on: #1f6fd1; --tab-on-text: #ffffff;
+    --radius: 14px; --num-font: inherit; --label-case: none; --label-track: 0;
   }
-  @media (prefers-color-scheme: dark) {
-    .viz-root {
-      color-scheme: dark;
-      --surface-0: #111110;
-      --surface-1: #1a1a19;
-      --text-primary: #f0efec;
-      --text-secondary: #c3c2b7;
-      --muted: #898781;
-      --grid: #2c2c2a;
-      --axis: #383835;
-      --border: rgba(255,255,255,0.10);
-      --series-1: #3987e5;
-      --band: rgba(12,163,12,0.16);
-      --good-text: #0ca30c;
-    }
+  :root[data-theme="hud"] {
+    color-scheme: dark;
+    --bg: #03080f; --bg-glow: radial-gradient(900px 500px at 50% -20%, #062033 0%, transparent 65%);
+    --card: rgba(8,22,36,0.85); --border: rgba(34,211,238,0.22);
+    --text: #e6fbff; --text-2: #8fc3d6; --muted: #5b7c8c;
+    --grid: #0d2232; --axis: #17344a;
+    --line: #22d3ee; --line-glow: drop-shadow(0 0 4px rgba(34,211,238,0.7)); --high: #fbbf24;
+    --band: rgba(34,211,238,0.07); --band-edge: #22d3ee;
+    --accent: #22d3ee; --accent-ink: #03080f;
+    --tab-bg: rgba(3,12,22,0.9); --tab-on: rgba(34,211,238,0.16); --tab-on-text: #67e8f9;
+    --radius: 6px; --num-font: ui-monospace, "SF Mono", Menlo, Consolas, monospace; --label-case: uppercase; --label-track: 0.08em;
   }
+  :root { --good: #0ca30c; --warning: #fab219; --critical: #d03b3b; }
+
   * { box-sizing: border-box; }
   html, body { margin: 0; }
   body {
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-    background: var(--surface-0);
-    color: var(--text-primary);
-    -webkit-text-size-adjust: 100%;
+    background: var(--bg-glow), var(--bg); background-attachment: fixed;
+    color: var(--text); -webkit-text-size-adjust: 100%; min-height: 100vh;
   }
   .wrap { max-width: 920px; margin: 0 auto; padding: max(16px, env(safe-area-inset-top)) 16px 32px; }
   header { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-  h1 { font-size: 18px; font-weight: 600; margin: 0; }
-  .status-line { font-size: 13px; color: var(--text-secondary); display: flex; align-items: center; gap: 6px; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: none; }
-  .dot.stale { background: var(--warning); }
-  .dot.error { background: var(--critical); }
-  .card { background: var(--surface-1); border: 1px solid var(--border); border-radius: 12px; padding: 16px; margin-bottom: 12px; }
-  .card h2 { font-size: 14px; font-weight: 600; margin: 0 0 4px; }
-  .card .sub { font-size: 12px; color: var(--text-secondary); margin: 0 0 12px; }
+  h1 { font-size: 18px; font-weight: 600; margin: 0; letter-spacing: var(--label-track); text-transform: var(--label-case); }
+  h1 .accent { color: var(--accent); }
+  .status-line { font-size: 13px; color: var(--text-2); display: flex; align-items: center; gap: 6px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--good); flex: none; box-shadow: 0 0 0 3px rgba(12,163,12,0.18); }
+  .dot.stale { background: var(--warning); box-shadow: none; }
+  .dot.error { background: var(--critical); box-shadow: none; }
+
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; margin-bottom: 12px; }
+  .card h2 { font-size: 14px; font-weight: 600; margin: 0 0 4px; text-transform: var(--label-case); letter-spacing: var(--label-track); }
+  .card .sub { font-size: 12px; color: var(--text-2); margin: 0 0 12px; }
   .tiles { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: 12px; margin-bottom: 12px; }
   .tiles .card { margin: 0; }
-  .label { font-size: 13px; color: var(--text-secondary); }
-  .hero { font-size: 56px; font-weight: 600; line-height: 1.05; margin-top: 4px; display: flex; align-items: baseline; gap: 10px; }
-  .hero .arrow { font-size: 40px; }
-  .hero .unit { font-size: 15px; font-weight: 500; color: var(--text-secondary); }
-  .value { font-size: 32px; font-weight: 600; margin-top: 4px; }
-  .value .unit { font-size: 14px; font-weight: 500; color: var(--text-secondary); }
-  .meta { font-size: 13px; color: var(--text-secondary); margin-top: 6px; }
+  .label { font-size: 13px; color: var(--text-2); text-transform: var(--label-case); letter-spacing: var(--label-track); }
+  .label .period { color: var(--accent); }
+  .hero { font-size: 56px; font-weight: 600; line-height: 1.05; margin-top: 4px; display: flex; align-items: baseline; gap: 10px; font-family: var(--num-font); }
+  .hero .arrow { font-size: 40px; color: var(--accent); }
+  .unit { font-size: 15px; font-weight: 500; color: var(--text-2); font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  .value { font-size: 32px; font-weight: 600; margin-top: 4px; font-family: var(--num-font); }
+  .value .unit { font-size: 14px; }
+  .meta { font-size: 13px; color: var(--text-2); margin-top: 6px; }
   .split { font-size: 12px; color: var(--muted); margin-top: 6px; }
+  :root[data-theme="hud"] .hero span:first-child { text-shadow: 0 0 18px rgba(34,211,238,0.35); }
+
+  /* Tabs */
+  .chart-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .tabs { display: inline-flex; background: var(--tab-bg); border: 1px solid var(--border); border-radius: 10px; padding: 3px; gap: 2px; }
+  :root[data-theme="hud"] .tabs { border-radius: 6px; }
+  .tab {
+    font: inherit; font-size: 13px; font-weight: 500; border: 0; background: transparent; color: var(--text-2);
+    padding: 7px 12px; border-radius: 8px; cursor: pointer; white-space: nowrap;
+    text-transform: var(--label-case); letter-spacing: var(--label-track);
+  }
+  :root[data-theme="hud"] .tab { border-radius: 4px; font-size: 12px; }
+  .tab[aria-selected="true"] { background: var(--tab-on); color: var(--tab-on-text); }
+  :root[data-theme="hud"] .tab[aria-selected="true"] { box-shadow: inset 0 0 0 1px rgba(34,211,238,0.5); }
+  .tab:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
   .chart-box { position: relative; }
   svg { display: block; width: 100%; height: 260px; touch-action: pan-y; }
+  #lineG { filter: var(--line-glow); }
   .tooltip {
-    position: absolute; pointer-events: none; background: var(--surface-1); color: var(--text-primary);
+    position: absolute; pointer-events: none; background: var(--card); color: var(--text);
     border: 1px solid var(--border); border-radius: 8px; padding: 6px 10px; font-size: 13px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12); white-space: nowrap; display: none; transform: translateX(-50%);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.25); white-space: nowrap; display: none; transform: translateX(-50%);
+    backdrop-filter: blur(6px);
   }
   .tooltip b { font-weight: 600; }
-  .tooltip span { color: var(--text-secondary); }
-  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-secondary); margin-top: 8px; flex-wrap: wrap; }
+  .tooltip span { color: var(--text-2); }
+  .legend { display: flex; gap: 16px; font-size: 12px; color: var(--text-2); margin-top: 8px; flex-wrap: wrap; }
   .legend i { display: inline-block; vertical-align: middle; margin-right: 6px; }
-  .legend .line { width: 16px; height: 2px; background: var(--series-1); border-radius: 1px; }
-  .legend .band { width: 14px; height: 10px; background: var(--band); border: 1px dashed var(--good); border-radius: 2px; }
-  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-  .cols .card { margin: 0; }
+  .legend .line { width: 16px; height: 2px; background: var(--line); border-radius: 1px; }
+  .legend .line.high { background: var(--high); }
+  .is-high { color: var(--high) !important; }
+  td.num.is-high { font-weight: 600; }
+  .legend .band { width: 14px; height: 10px; background: var(--band); border: 1px dashed var(--band-edge); border-radius: 2px; }
+
   table { width: 100%; border-collapse: collapse; font-size: 14px; }
-  th { text-align: left; font-weight: 500; font-size: 12px; color: var(--text-secondary); padding: 6px 4px; border-bottom: 1px solid var(--grid); }
+  th { text-align: left; font-weight: 500; font-size: 12px; color: var(--text-2); padding: 6px 4px; border-bottom: 1px solid var(--grid); text-transform: var(--label-case); letter-spacing: var(--label-track); }
   td { padding: 7px 4px; border-bottom: 1px solid var(--grid); }
-  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--num-font); }
   tr:last-child td { border-bottom: none; }
-  .trend-cell { color: var(--text-secondary); }
-  .trend-cell b { color: var(--text-primary); font-weight: 600; margin-right: 6px; }
-  .banner { display: none; border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-bottom: 12px; border: 1px solid var(--border); background: var(--surface-1); }
+  .trend-cell { color: var(--text-2); }
+  .trend-cell b { color: var(--accent); font-weight: 600; margin-right: 6px; }
+  .recent-grid { display: grid; grid-template-columns: 1fr 1fr; column-gap: 24px; }
+
+  .banner { display: none; border-radius: 10px; padding: 10px 12px; font-size: 14px; margin-bottom: 12px; border: 1px solid var(--border); background: var(--card); }
   .banner.show { display: block; }
   .banner .icon { font-weight: 700; margin-right: 6px; }
   .banner.warn .icon { color: var(--warning); }
   .banner.err .icon { color: var(--critical); }
+
   form.setup { max-width: 460px; }
   form.setup label { display: block; font-size: 13px; font-weight: 500; margin: 12px 0 6px; }
-  form.setup input {
-    width: 100%; font-size: 16px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--axis);
-    background: var(--surface-0); color: var(--text-primary);
-  }
-  button {
-    font: inherit; font-size: 14px; font-weight: 500; padding: 9px 14px; border-radius: 8px; cursor: pointer;
-    border: 1px solid var(--border); background: var(--surface-1); color: var(--text-primary);
-  }
-  button.primary { background: var(--series-1); border-color: var(--series-1); color: #fff; margin-top: 16px; }
-  .link-btn { border: none; background: none; padding: 0; color: var(--text-secondary); text-decoration: underline; font-size: 12px; }
+  form.setup input { width: 100%; font-size: 16px; padding: 10px 12px; border-radius: 8px; border: 1px solid var(--axis); background: var(--bg); color: var(--text); }
+  button.primary { font: inherit; font-size: 14px; font-weight: 600; padding: 10px 16px; border-radius: 8px; cursor: pointer; border: 0; background: var(--accent); color: var(--accent-ink); margin-top: 16px; }
+  .link-btn { font: inherit; border: none; background: none; padding: 0; color: var(--text-2); text-decoration: underline; font-size: 12px; cursor: pointer; }
+  .link-btn[aria-pressed="true"] { color: var(--accent); text-decoration: none; font-weight: 600; }
   footer { font-size: 12px; color: var(--muted); margin-top: 16px; display: flex; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+  footer .themes { display: flex; gap: 10px; align-items: center; }
   .hidden { display: none !important; }
+
   @media (max-width: 640px) {
     .tiles { grid-template-columns: 1fr 1fr; }
     .tiles .now { grid-column: 1 / -1; }
-    .cols { grid-template-columns: 1fr; }
     .hero { font-size: 64px; }
     svg { height: 220px; }
+    .chart-head { flex-direction: column; }
+    .tabs { width: 100%; }
+    .tab { flex: 1; padding: 8px 6px; }
+    .recent-grid { grid-template-columns: 1fr; }
+    .recent-grid table + table thead { display: none; }
   }
 </style>
 </head>
-<body class="viz-root">
+<body>
 <div class="wrap">
   <header>
-    <h1>Glucose HUD</h1>
-    <div class="status-line" id="statusLine"><span class="dot" id="statusDot"></span><span id="statusText">Starting…</span></div>
+    <h1>Glucose <span class="accent">HUD</span></h1>
+    <div class="status-line"><span class="dot" id="statusDot"></span><span id="statusText">Starting…</span></div>
   </header>
 
   <!-- Setup: shown until a token is saved on this device -->
@@ -154,51 +185,55 @@
         <div class="meta" id="nowMeta">–</div>
       </div>
       <div class="card">
-        <div class="label">Today's average</div>
+        <div class="label">Average · <span class="period" id="avgPeriod"></span></div>
         <div class="value"><span id="avgValue">–</span> <span class="unit">mg/dL</span></div>
         <div class="split" id="avgMeta"></div>
       </div>
       <div class="card">
-        <div class="label">Today in range (70–180)</div>
+        <div class="label">In range 70–140 · <span class="period" id="tirPeriod"></span></div>
         <div class="value"><span id="tirValue">–</span><span class="unit">%</span></div>
         <div class="split" id="tirMeta"></div>
       </div>
     </div>
 
     <section class="card">
-      <h2>Last 24 hours</h2>
-      <p class="sub" id="chartSub">Eastern time · shaded band is 70–180 mg/dL</p>
-      <div class="chart-box" id="chartBox">
-        <svg id="chart" role="img" aria-label="Glucose over the last 24 hours"></svg>
+      <div class="chart-head">
+        <div>
+          <h2 id="chartTitle">Last 24 hours</h2>
+          <p class="sub" id="chartSub" style="margin:0"></p>
+        </div>
+        <div class="tabs" role="tablist" aria-label="Time period">
+          <button class="tab" role="tab" data-view="last24" aria-selected="true">Last 24 hours</button>
+          <button class="tab" role="tab" data-view="today" aria-selected="false">Today</button>
+          <button class="tab" role="tab" data-view="yesterday" aria-selected="false">Yesterday</button>
+        </div>
+      </div>
+      <div class="chart-box">
+        <svg id="chart" role="img" aria-label="Glucose chart"></svg>
         <div class="tooltip" id="tooltip"></div>
       </div>
-      <div class="legend"><span><i class="line"></i>Glucose</span><span><i class="band"></i>Range 70–180</span></div>
+      <div class="legend"><span><i class="line"></i>Glucose</span><span><i class="band"></i>Range 70–140</span><span><i class="line high"></i>Above 140</span></div>
     </section>
 
-    <div class="cols">
-      <section class="card">
-        <h2>Recent readings</h2>
-        <p class="sub">Newest first · Eastern time</p>
-        <table>
-          <thead><tr><th>Time</th><th class="num">mg/dL</th><th>Trend</th></tr></thead>
-          <tbody id="recentBody"></tbody>
-        </table>
-      </section>
-      <section class="card">
-        <h2>Daily summary</h2>
-        <p class="sub">Last 7 days · Eastern calendar days</p>
-        <table>
-          <thead><tr><th>Day</th><th class="num">Average</th><th class="num">In range</th><th class="num">Readings</th></tr></thead>
-          <tbody id="dailyBody"></tbody>
-        </table>
-      </section>
-    </div>
-
-    <footer>
-      <span>Personal fitness dashboard, not a medical device.</span>
-      <span><button class="link-btn" id="forgetBtn" type="button">Forget token on this device</button></span>
-    </footer>
+    <section class="card">
+      <h2>Recent readings</h2>
+      <p class="sub">Newest first · Eastern time</p>
+      <div class="recent-grid">
+        <table><thead><tr><th>Time</th><th class="num">mg/dL</th><th>Trend</th></tr></thead><tbody id="recentA"></tbody></table>
+        <table><thead><tr><th>Time</th><th class="num">mg/dL</th><th>Trend</th></tr></thead><tbody id="recentB"></tbody></table>
+      </div>
+    </section>
   </main>
+
+  <footer id="footer" class="hidden">
+    <span>Personal fitness dashboard, not a medical device.</span>
+    <span class="themes">Theme:
+      <button class="link-btn" data-theme-btn="midnight">Midnight</button>
+      <button class="link-btn" data-theme-btn="ice">Ice</button>
+      <button class="link-btn" data-theme-btn="hud">HUD</button>
+      · <button class="link-btn" id="forgetBtn" type="button">Forget token</button>
+    </span>
+  </footer>
 </div>
 
 <script src="glucose-data.js"></script>
@@ -207,22 +242,71 @@
   "use strict";
   var GD = window.GlucoseData;
   var DEFAULT_URL = "https://cadhud.chickenkiller.com";
-  var KEY_TOKEN = "hud.token", KEY_URL = "hud.url";
-  var POLL_MS = 30000;              // check for a new reading every 30 s
-  var DAILY_REFRESH_MS = 30 * 60000;
+  var KEY_TOKEN = "hud.token", KEY_URL = "hud.url", KEY_VIEW = "hud.view", KEY_THEME = "hud.theme";
+  var DEFAULT_THEME = "midnight";
+  var POLL_MS = 30000;
   var STALE_MIN = 15;
-  var RANGE = { low: 70, high: 180 };
+  var RANGE = { low: 70, high: 140 };
+  var Y_MIN = 40, Y_MAX = 250;
+  var HOUR = 3600000;
+  var VIEWS = {
+    last24:    { title: "Last 24 hours", short: "last 24 h" },
+    today:     { title: "Today",         short: "today" },
+    yesterday: { title: "Yesterday",     short: "yesterday" }
+  };
 
   var $ = function (id) { return document.getElementById(id); };
-  var source = null, latestTime = 0, last24 = [], lastDailyFetch = 0, pollTimer = null, lastCheck = 0;
+  var source = null, readings = [], latestTime = 0, pollTimer = null, lastCheck = 0;
+  var view = "last24";
 
   function store(k, v) { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} }
   function load(k) { try { return localStorage.getItem(k); } catch (e) { return null; } }
 
+  /* ---------- Theme ---------- */
+  var THEME_BG = { midnight: "#0a1222", ice: "#eaf1fa", hud: "#03080f" };
+  function setTheme(name) {
+    if (!THEME_BG[name]) name = DEFAULT_THEME;
+    document.documentElement.setAttribute("data-theme", name);
+    $("themeColor").setAttribute("content", THEME_BG[name]);
+    document.querySelectorAll("[data-theme-btn]").forEach(function (b) {
+      b.setAttribute("aria-pressed", b.getAttribute("data-theme-btn") === name ? "true" : "false");
+    });
+    store(KEY_THEME, name);
+    if (source) renderChart();
+  }
+  document.querySelectorAll("[data-theme-btn]").forEach(function (b) {
+    b.addEventListener("click", function () { setTheme(b.getAttribute("data-theme-btn")); });
+  });
+  setTheme(load(KEY_THEME) || DEFAULT_THEME);
+
+  /* ---------- Tabs ---------- */
+  function setView(v) {
+    if (!VIEWS[v]) v = "last24";
+    view = v;
+    store(KEY_VIEW, v);
+    document.querySelectorAll(".tab").forEach(function (t) {
+      t.setAttribute("aria-selected", t.getAttribute("data-view") === v ? "true" : "false");
+    });
+    if (source) { renderPeriod(); renderChart(); }
+  }
+  document.querySelectorAll(".tab").forEach(function (t) {
+    t.addEventListener("click", function () { setView(t.getAttribute("data-view")); });
+  });
+  view = VIEWS[load(KEY_VIEW)] ? load(KEY_VIEW) : "last24";
+  setView(view);
+
+  /** The time window [start, end) for the current tab, plus "now" for marking. */
+  function windowFor(v) {
+    var now = Date.now();
+    if (v === "today") { var d = GD.dayRangeET(now); return { start: d.start, end: d.end, now: now }; }
+    if (v === "yesterday") { var y = GD.dayRangeET(GD.startOfDayET(now) - 1); return { start: y.start, end: y.end, now: null }; }
+    return { start: now - 24 * HOUR, end: now, now: null };
+  }
+
   /* ---------- Setup ---------- */
   function showSetup(msg) {
-    stopPolling();
-    $("dash").classList.add("hidden");
+    stopPolling(); source = null;
+    $("dash").classList.add("hidden"); $("footer").classList.add("hidden");
     $("setup").classList.remove("hidden");
     $("urlInput").value = load(KEY_URL) || DEFAULT_URL;
     $("tokenInput").value = "";
@@ -236,10 +320,8 @@
     var url = ($("urlInput").value.trim() || DEFAULT_URL).replace(/\/+$/, "");
     if (!token) return;
     $("setupError").textContent = "Checking…";
-    var test = GD.createNightscoutSource({ baseUrl: url, token: token });
-    test.latest().then(function () {
-      store(KEY_TOKEN, token);
-      store(KEY_URL, url);
+    GD.createNightscoutSource({ baseUrl: url, token: token }).latest().then(function () {
+      store(KEY_TOKEN, token); store(KEY_URL, url);
       $("tokenInput").value = "";
       start();
     }).catch(function (e) {
@@ -262,38 +344,29 @@
     if (!token) { showSetup(); return; }
     source = GD.createNightscoutSource({ baseUrl: load(KEY_URL) || DEFAULT_URL, token: token });
     $("setup").classList.add("hidden");
-    $("dash").classList.remove("hidden");
-    latestTime = 0; lastDailyFetch = 0;
+    $("dash").classList.remove("hidden"); $("footer").classList.remove("hidden");
+    latestTime = 0;
     refreshAll();
-    startPolling();
+    stopPolling(); pollTimer = setInterval(poll, POLL_MS);
   }
-
-  function startPolling() { stopPolling(); pollTimer = setInterval(poll, POLL_MS); }
   function stopPolling() { if (pollTimer) clearInterval(pollTimer); pollTimer = null; }
 
   function poll() {
     if (!source) return;
     source.latest().then(function (r) {
-      lastCheck = Date.now();
-      hideError();
+      lastCheck = Date.now(); hideError();
       if (r && r.time > latestTime) return refreshAll();
       renderStatus();
     }).catch(handleError);
   }
 
+  // Load from midnight yesterday (Eastern) to now: covers all three tabs.
   function refreshAll() {
-    var now = Date.now();
-    var from = Math.min(now - 24 * 3600000, GD.startOfDayET(now));
-    var jobs = [source.since(from, 600)];
-    var needDaily = now - lastDailyFetch > DAILY_REFRESH_MS;
-    if (needDaily) jobs.push(source.since(GD.startOfDayET(now - 6 * 86400000), 2400));
-    return Promise.all(jobs).then(function (res) {
-      lastCheck = Date.now();
-      hideError();
-      last24 = res[0];
-      if (last24.length) latestTime = last24[last24.length - 1].time;
-      if (needDaily) { lastDailyFetch = now; renderDaily(res[1]); }
-      else renderTodayRow();
+    var from = GD.startOfDayET(GD.startOfDayET(Date.now()) - 1);
+    return source.since(from, 1000).then(function (rows) {
+      lastCheck = Date.now(); hideError();
+      readings = rows;
+      if (rows.length) latestTime = rows[rows.length - 1].time;
       renderAll();
     }).catch(handleError);
   }
@@ -307,69 +380,48 @@
   function hideError() { $("errBanner").classList.remove("show"); }
 
   /* ---------- Rendering ---------- */
-  var dailyRows = [];
-
-  function renderAll() {
-    renderNow();
-    renderToday();
-    renderChart();
-    renderRecent();
-    renderStatus();
-  }
+  function renderAll() { renderNow(); renderPeriod(); renderChart(); renderRecent(); renderStatus(); }
 
   function minutesAgo(ms) { return Math.max(0, Math.round((Date.now() - ms) / 60000)); }
   function agoText(ms) { var m = minutesAgo(ms); return m === 0 ? "just now" : m === 1 ? "1 min ago" : m + " min ago"; }
 
   function renderNow() {
-    var r = last24[last24.length - 1];
-    if (!r) { $("nowValue").textContent = "–"; $("nowArrow").textContent = ""; $("nowMeta").textContent = "No readings in the last 24 hours"; return; }
-    var prev = last24.length > 1 ? last24[last24.length - 2] : null;
+    var r = readings[readings.length - 1];
+    if (!r) { $("nowValue").textContent = "–"; $("nowArrow").textContent = ""; $("nowMeta").textContent = "No recent readings"; return; }
+    var prev = readings.length > 1 ? readings[readings.length - 2] : null;
     var delta = prev && r.time - prev.time < 15 * 60000 ? r.mgdl - prev.mgdl : null;
     $("nowValue").textContent = r.mgdl;
+    $("nowValue").classList.toggle("is-high", r.mgdl > RANGE.high);
     $("nowArrow").textContent = r.arrow;
+    $("nowArrow").classList.toggle("is-high", r.mgdl > RANGE.high);
     $("nowArrow").setAttribute("aria-label", r.trend);
     $("nowMeta").textContent = GD.formatTimeET(r.time) + " · " + agoText(r.time) + " · " + r.trend +
       (delta !== null ? " · " + (delta > 0 ? "+" : delta < 0 ? "−" : "±") + Math.abs(delta) + " since last" : "");
     document.title = r.mgdl + " " + r.arrow + " · Glucose HUD";
   }
 
-  function renderToday() {
-    var start = GD.startOfDayET(Date.now());
-    var s = GD.stats(last24.filter(function (r) { return r.time >= start; }), RANGE);
+  function renderPeriod() {
+    var w = windowFor(view);
+    var s = GD.stats(GD.between(readings, w.start, w.end + 1), RANGE);
+    var short = VIEWS[view].short;
+    $("avgPeriod").textContent = short; $("tirPeriod").textContent = short;
     $("avgValue").textContent = s.avg == null ? "–" : s.avg;
-    $("avgMeta").textContent = s.count ? "Low " + s.min + " · High " + s.max + " · " + s.count + " readings" : "No readings yet today";
+    $("avgMeta").textContent = s.count ? "Low " + s.min + " · High " + s.max + " · " + s.count + " readings" : "No readings in this period";
     $("tirValue").textContent = s.tirPct == null ? "–" : s.tirPct;
     $("tirMeta").textContent = s.count ? "Below " + s.belowPct + "% · Above " + s.abovePct + "%" : "";
-  }
-
-  function renderDaily(rows) {
-    dailyRows = GD.dailySummaries(rows, RANGE).slice(0, 7);
-    drawDaily();
-  }
-  function renderTodayRow() {
-    // keep today's row current between the half-hourly full refreshes
-    var start = GD.startOfDayET(Date.now());
-    var s = GD.stats(last24.filter(function (r) { return r.time >= start; }), RANGE);
-    s.dayStart = start; s.label = GD.formatDayET(start);
-    if (dailyRows.length && dailyRows[0].dayStart === start) dailyRows[0] = s;
-    else if (s.count) dailyRows.unshift(s);
-    dailyRows = dailyRows.slice(0, 7);
-    drawDaily();
-  }
-  function drawDaily() {
-    var today = GD.startOfDayET(Date.now());
-    $("dailyBody").innerHTML = dailyRows.map(function (d) {
-      return "<tr><td>" + (d.dayStart === today ? "Today" : d.label) + "</td><td class='num'>" + d.avg +
-        "</td><td class='num'>" + d.tirPct + "%</td><td class='num'>" + d.count + "</td></tr>";
-    }).join("") || "<tr><td colspan='4'>No data yet</td></tr>";
+    $("chartTitle").textContent = VIEWS[view].title;
+    var dayLabel = view === "last24" ? GD.formatTimeET(w.start) + " → now" : GD.formatDayET(w.start) + " · midnight to midnight";
+    $("chartSub").textContent = dayLabel + " · Eastern · " + s.count + " readings";
   }
 
   function renderRecent() {
-    var rows = last24.slice(-12).reverse();
-    $("recentBody").innerHTML = rows.map(function (r) {
-      return "<tr><td>" + GD.formatTimeET(r.time) + "</td><td class='num'>" + r.mgdl +
+    var rows = readings.slice(-12).reverse();
+    var html = rows.map(function (r) {
+      return "<tr><td>" + GD.formatTimeET(r.time) + "</td><td class='num" + (r.mgdl > RANGE.high ? " is-high" : "") + "'>" + r.mgdl +
         "</td><td class='trend-cell'><b>" + r.arrow + "</b>" + r.trend + "</td></tr>";
-    }).join("") || "<tr><td colspan='3'>No readings yet</td></tr>";
+    });
+    $("recentA").innerHTML = html.slice(0, 6).join("") || "<tr><td colspan='3'>No readings yet</td></tr>";
+    $("recentB").innerHTML = html.slice(6).join("");
   }
 
   function setStatus(kind, text) {
@@ -378,7 +430,7 @@
   }
 
   function renderStatus() {
-    var r = last24[last24.length - 1];
+    var r = readings[readings.length - 1];
     if (!r) { setStatus("stale", "Waiting for readings"); return; }
     var m = minutesAgo(r.time);
     if (m >= STALE_MIN) {
@@ -393,60 +445,72 @@
 
   /* ---------- Chart (hand-built SVG) ---------- */
   var chartState = null;
+  function colorFor(v) { return v > RANGE.high ? "var(--high)" : "var(--line)"; }
+  var hourFmt = new Intl.DateTimeFormat("en-US", { timeZone: GD.TIME_ZONE, hour: "numeric", hourCycle: "h23" });
+  var hourLbl = new Intl.DateTimeFormat("en-US", { timeZone: GD.TIME_ZONE, hour: "numeric" });
 
   function renderChart() {
     var svg = $("chart");
     var W = svg.clientWidth || 600, H = svg.clientHeight || 240;
     var m = { l: 36, r: 12, t: 10, b: 24 };
-    var now = Date.now(), x0 = now - 24 * 3600000, x1 = now;
-    var data = last24.filter(function (r) { return r.time >= x0; });
-    var lo = 40, hi = 300;
-    data.forEach(function (r) { if (r.mgdl < lo) lo = Math.floor(r.mgdl / 20) * 20; if (r.mgdl > hi) hi = Math.ceil(r.mgdl / 20) * 20; });
+    var w = windowFor(view), x0 = w.start, x1 = w.end;
+    var data = GD.between(readings, x0, x1 + 1);
+    var lo = Y_MIN, hi = Y_MAX;
+    data.forEach(function (r) {
+      if (r.mgdl < lo) lo = Math.floor(r.mgdl / 10) * 10;
+      if (r.mgdl > hi) hi = Math.ceil(r.mgdl / 25) * 25;   // only grows past 250 if a reading does
+    });
     var sx = function (t) { return m.l + (t - x0) / (x1 - x0) * (W - m.l - m.r); };
     var sy = function (v) { return m.t + (1 - (v - lo) / (hi - lo)) * (H - m.t - m.b); };
     var out = [];
-    var NS = 'xmlns="http://www.w3.org/2000/svg"';
     svg.setAttribute("viewBox", "0 0 " + W + " " + H);
 
-    // target band
+    // range band
     out.push('<rect x="' + m.l + '" y="' + sy(RANGE.high) + '" width="' + (W - m.l - m.r) + '" height="' + (sy(RANGE.low) - sy(RANGE.high)) + '" fill="var(--band)"/>');
     // y grid + labels
-    [lo, RANGE.low, RANGE.high, 250, hi].filter(function (v, i, a) { return v >= lo && v <= hi && a.indexOf(v) === i; }).forEach(function (v) {
-      var y = sy(v);
-      var isRange = v === RANGE.low || v === RANGE.high;
-      out.push('<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + y + '" y2="' + y + '" stroke="' + (isRange ? "var(--good)" : "var(--grid)") + '" stroke-width="1"' + (isRange ? ' stroke-dasharray="4 4" opacity="0.7"' : "") + '/>');
+    [lo, RANGE.low, RANGE.high, hi].filter(function (v, i, a) { return a.indexOf(v) === i; }).forEach(function (v) {
+      var y = sy(v), isRange = v === RANGE.low || v === RANGE.high;
+      out.push('<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + y + '" y2="' + y + '" stroke="' + (isRange ? "var(--band-edge)" : "var(--grid)") + '" stroke-width="1"' + (isRange ? ' stroke-dasharray="4 4" opacity="0.6"' : "") + '/>');
       out.push('<text x="' + (m.l - 6) + '" y="' + (y + 4) + '" text-anchor="end" font-size="11" fill="var(--muted)">' + v + '</text>');
     });
-    // x ticks every 3 hours (Eastern)
-    var hourMs = 3600000, first = Math.ceil(x0 / hourMs) * hourMs;
-    for (var t = first; t <= x1; t += hourMs) {
-      var hr = Number(new Intl.DateTimeFormat("en-US", { timeZone: GD.TIME_ZONE, hour: "numeric", hourCycle: "h23" }).format(new Date(t)));
-      if (hr % (W < 500 ? 6 : 3) !== 0) continue;
+    // x ticks (Eastern clock hours)
+    var step = W < 500 ? 6 : 3;
+    for (var t = Math.ceil(x0 / HOUR) * HOUR; t <= x1; t += HOUR) {
+      if (Number(hourFmt.format(new Date(t))) % step !== 0) continue;
       var x = sx(t);
-      var lbl = new Intl.DateTimeFormat("en-US", { timeZone: GD.TIME_ZONE, hour: "numeric" }).format(new Date(t)).replace(" ", "");
       if (x < m.l + 14 || x > W - m.r - 14) continue;
       out.push('<line x1="' + x + '" x2="' + x + '" y1="' + (H - m.b) + '" y2="' + (H - m.b + 4) + '" stroke="var(--axis)"/>');
-      out.push('<text x="' + x + '" y="' + (H - 6) + '" text-anchor="middle" font-size="11" fill="var(--muted)">' + lbl + '</text>');
+      out.push('<text x="' + x + '" y="' + (H - 6) + '" text-anchor="middle" font-size="11" fill="var(--muted)">' + hourLbl.format(new Date(t)).replace(" ", "") + '</text>');
     }
-    // baseline
     out.push('<line x1="' + m.l + '" x2="' + (W - m.r) + '" y1="' + (H - m.b) + '" y2="' + (H - m.b) + '" stroke="var(--axis)"/>');
+    // "now" marker on the Today tab
+    if (w.now) {
+      var nx = sx(w.now);
+      out.push('<line x1="' + nx + '" x2="' + nx + '" y1="' + m.t + '" y2="' + (H - m.b) + '" stroke="var(--accent)" stroke-width="1" stroke-dasharray="2 3" opacity="0.6"/>');
+      out.push('<text x="' + Math.min(nx + 4, W - m.r - 22) + '" y="' + (m.t + 10) + '" font-size="10" fill="var(--accent)">now</text>');
+    }
     // line, broken at gaps > 15 min
     var path = "", prev = null;
     data.forEach(function (r) {
-      var cmd = (!prev || r.time - prev.time > 15 * 60000) ? "M" : "L";
-      path += cmd + sx(r.time).toFixed(1) + "," + sy(r.mgdl).toFixed(1);
+      path += ((!prev || r.time - prev.time > 15 * 60000) ? "M" : "L") + sx(r.time).toFixed(1) + "," + sy(r.mgdl).toFixed(1);
       prev = r;
     });
-    if (path) out.push('<path d="' + path + '" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>');
-    // latest point marker
+    out.push('<g id="lineG">');
+    if (path) {
+      var yHi = sy(RANGE.high);
+      out.push('<defs><clipPath id="clipHigh"><rect x="0" y="0" width="' + W + '" height="' + yHi + '"/></clipPath>' +
+               '<clipPath id="clipNorm"><rect x="0" y="' + yHi + '" width="' + W + '" height="' + (H - yHi) + '"/></clipPath></defs>');
+      out.push('<path d="' + path + '" clip-path="url(#clipNorm)" fill="none" stroke="var(--line)" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>');
+      out.push('<path d="' + path + '" clip-path="url(#clipHigh)" fill="none" stroke="var(--high)" stroke-width="2.5" stroke-linejoin="round" stroke-linecap="round"/>');
+    }
     var last = data[data.length - 1];
-    if (last) out.push('<circle cx="' + sx(last.time) + '" cy="' + sy(last.mgdl) + '" r="4.5" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="2"/>');
+    if (last && view !== "yesterday") out.push('<circle cx="' + sx(last.time) + '" cy="' + sy(last.mgdl) + '" r="4.5" fill="' + colorFor(last.mgdl) + '" stroke="var(--card)" stroke-width="2"/>');
+    out.push('</g>');
+    if (!data.length) out.push('<text x="' + (W / 2) + '" y="' + (H / 2) + '" text-anchor="middle" font-size="13" fill="var(--muted)">No readings for this period</text>');
     // hover layer
-    out.push('<g id="hover" style="display:none"><line id="hLine" y1="' + m.t + '" y2="' + (H - m.b) + '" stroke="var(--axis)" stroke-width="1"/><circle id="hDot" r="5" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="2"/></g>');
-    out.push('<rect x="' + m.l + '" y="0" width="' + (W - m.l - m.r) + '" height="' + H + '" fill="transparent" id="hit"/>');
+    out.push('<g id="hover" style="display:none"><line id="hLine" y1="' + m.t + '" y2="' + (H - m.b) + '" stroke="var(--axis)" stroke-width="1"/><circle id="hDot" r="5" fill="var(--line)" stroke="var(--card)" stroke-width="2"/></g>');
     svg.innerHTML = out.join("");
-    chartState = { data: data, sx: sx, sy: sy, W: W };
-    $("chartSub").textContent = "Eastern time · shaded band is 70–180 mg/dL · " + data.length + " readings";
+    chartState = { data: data, sx: sx, sy: sy, W: W, H: H };
   }
 
   function onHover(ev) {
@@ -457,16 +521,14 @@
     chartState.data.forEach(function (r) { var d = Math.abs(chartState.sx(r.time) - px); if (d < bestD) { bestD = d; best = r; } });
     if (!best || bestD > 30) { hideHover(); return; }
     var x = chartState.sx(best.time), y = chartState.sy(best.mgdl);
-    var g = svg.querySelector("#hover"); g.style.display = "";
+    svg.querySelector("#hover").style.display = "";
     var hl = svg.querySelector("#hLine"); hl.setAttribute("x1", x); hl.setAttribute("x2", x);
-    var hd = svg.querySelector("#hDot"); hd.setAttribute("cx", x); hd.setAttribute("cy", y);
+    var hd = svg.querySelector("#hDot"); hd.setAttribute("cx", x); hd.setAttribute("cy", y); hd.setAttribute("fill", colorFor(best.mgdl));
     var tip = $("tooltip");
     tip.innerHTML = "<b>" + best.mgdl + " mg/dL " + best.arrow + "</b> <span>" + GD.formatTimeET(best.time) + "</span>";
     tip.style.display = "block";
-    var left = x * rect.width / chartState.W;
-    left = Math.max(70, Math.min(rect.width - 70, left));
-    tip.style.left = left + "px";
-    tip.style.top = Math.max(0, y * rect.height / svg.viewBox.baseVal.height - 44) + "px";
+    tip.style.left = Math.max(70, Math.min(rect.width - 70, x * rect.width / chartState.W)) + "px";
+    tip.style.top = Math.max(0, y * rect.height / chartState.H - 44) + "px";
   }
   function hideHover() {
     var g = $("chart").querySelector("#hover"); if (g) g.style.display = "none";
@@ -477,9 +539,7 @@
   $("chart").addEventListener("pointerleave", hideHover);
 
   /* ---------- Keep it fresh ---------- */
-  // Update "x min ago" text every 20 s without hitting the server
-  setInterval(function () { if (source && last24.length) { renderNow(); renderStatus(); } }, 20000);
-  // Phones pause pages in the background: refresh as soon as it's visible again
+  setInterval(function () { if (source && readings.length) { renderNow(); renderStatus(); if (view === "today") renderChart(); } }, 20000);
   document.addEventListener("visibilitychange", function () {
     if (document.visibilityState === "visible" && source) { poll(); if (Date.now() - lastCheck > 10 * 60000) refreshAll(); }
   });

@@ -152,6 +152,17 @@
     return Date.UTC(p.y, p.m - 1, p.d) - p2.offMin * 60000;
   }
 
+  /** [start, end) of the Eastern calendar day containing ms (23/25-hour DST days included). */
+  function dayRangeET(ms) {
+    var start = startOfDayET(ms);
+    return { start: start, end: startOfDayET(start + 36 * 3600000) };
+  }
+
+  /** Readings with start <= time < end. */
+  function between(readings, start, end) {
+    return readings.filter(function (r) { return r.time >= start && r.time < end; });
+  }
+
   function formatTimeET(ms) {
     return new Intl.DateTimeFormat("en-US", { timeZone: TIME_ZONE, hour: "numeric", minute: "2-digit" }).format(new Date(ms));
   }
@@ -183,6 +194,8 @@
     stats: stats,
     dailySummaries: dailySummaries,
     startOfDayET: startOfDayET,
+    dayRangeET: dayRangeET,
+    between: between,
     formatTimeET: formatTimeET,
     formatDayET: formatDayET
   };
